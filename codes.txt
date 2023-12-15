@@ -1,0 +1,261 @@
+BeginTest.aspx
+
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="BeginTest.aspx.cs" Inherits="Assignment_Part_2.BeginTest" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title></title>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div style="height:450px;" align="center">
+            <table style="width:565px;height:421px;margin:5px 5px 5px 5px;" align="center">
+                <tr>
+                    <td align="center">
+                        <b>Enter Your Email</b><br/>
+                        <br />
+                        <br />
+                        <asp:TextBox ID="TextBox1" runat="server" placeholder="email" Width="330px" Height="20px"></asp:TextBox><br />
+                        <asp:RequiredFieldValidator ID="RequiredFieldValidator1" runat="server" ErrorMessage="email is required" ControlToValidate="TextBox1"></asp:RequiredFieldValidator><br />
+
+                        <asp:RegularExpressionValidator ID="RegularExpressionValidator1" runat="server" ErrorMessage="enter valid email Address" ControlToValidate="TextBox1" ValidationExpression="^\S+@\S+$"></asp:RegularExpressionValidator><br />
+                        <asp:Button ID="Button1" runat="server" Text="BEGIN EXAM" Height="20px" Width="330px" OnClick="Button1_Click" />
+
+                    </td>
+
+                </tr>
+            </table>
+        </div>
+    </form>
+</body>
+</html>
+
+
+BeginTest.aspx.cs
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Assignment_Part_2
+{
+    public partial class BeginTest : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+
+        }
+
+        protected void Button1_Click(object sender, EventArgs e)
+        {
+            Response.Cookies["Email"].Value = TextBox1.Text;
+            Response.Redirect("QuetionPage.aspx");
+        }
+    }
+}
+
+
+QuetionPage.aspx
+
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="QuetionPage.aspx.cs" Inherits="Assignment_Part_2.QuetionPage" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title></title>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div>
+            <h1><b>Quetion</b></h1><br />
+            <br />
+            &nbsp;&nbsp;
+            <asp:Label ID="Label2" runat="server" Text="Label"></asp:Label><br />
+            <br />
+            <h1><b>Answers</b></h1><br />
+            <asp:RadioButton ID="RadioButton1" runat="server" GroupName="ans" /><br />
+            <asp:RadioButton ID="RadioButton2" runat="server" GroupName="ans" /><br />
+            <asp:RadioButton ID="RadioButton3" runat="server" GroupName="ans"/><br />
+            <asp:RadioButton ID="RadioButton4" runat="server" GroupName="ans"/><br />
+            <br />
+            <asp:Button ID="Button1" runat="server" Text="Next" OnClick="Button1_Click" />
+
+
+            
+
+        </div>
+    </form>
+</body>
+</html>
+
+Quetionpage.aspx.cs
+
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Assignment_Part_2
+{
+    public partial class QuetionPage : System.Web.UI.Page
+    {
+        
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            if(!IsPostBack)
+            {
+                SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["Assignment2ConnectionString"].ConnectionString);
+                con.Open();
+                SqlCommand cmd = new SqlCommand("Select Quetion,Opt1,Opt2,Opt3,Opt4,CorrectAns from Quetions where Qid=@id",con);
+                cmd.Parameters.AddWithValue("@id",1);
+                SqlDataReader da = cmd.ExecuteReader();
+                while(da.Read())
+                {
+                   
+                    Label2.Text = da.GetValue(0).ToString();
+                    RadioButton1.Text = da.GetValue(1).ToString();
+                    RadioButton2.Text = da.GetValue(2).ToString();
+                    RadioButton3.Text = da.GetValue(3).ToString();
+                    RadioButton4.Text = da.GetValue(4).ToString();
+
+                }
+                Session["count"] = 2;
+                Session["count1"] = 1;
+            }
+        }
+       
+        protected void Button1_Click(object sender, EventArgs e)
+        {
+            SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["Assignment2ConnectionString"].ConnectionString);
+            con.Open();
+            //store answer in user database
+            string answer = String.Empty;
+            if (RadioButton1.Checked)
+            {
+                answer = (RadioButton1.Text).ToString();
+            }
+            else if (RadioButton2.Checked)
+            {
+                answer = (RadioButton2.Text).ToString();
+
+            }
+            else if (RadioButton3.Checked)
+            {
+                answer= (RadioButton3.Text).ToString();
+            }
+            else if (RadioButton4.Checked)
+            {
+                answer=(RadioButton4.Text).ToString();  
+            }
+
+            
+
+           
+            SqlCommand cd = new SqlCommand("insert into Answers values(@email,@ans,@qid)", con);
+            cd.Parameters.AddWithValue("@email", Request.Cookies["Email"].Value);
+            cd.Parameters.AddWithValue("@ans", answer);
+            cd.Parameters.AddWithValue("@qid",(int)Session["count1"]);
+            Session["count1"] = (int)Session["count1"] + 1;
+            cd.ExecuteNonQuery();
+            //proceed to next quetion
+            if ((int)Session["count"] == 5)
+            {
+                Button1.Text = "Submit";
+            }
+
+            if((int)Session["count"] == 6)
+            {
+                Session.Abandon();
+                Response.Redirect("ExamResult.aspx");
+            }
+
+            
+            SqlCommand cmd = new SqlCommand("Select Quetion,Opt1,Opt2,Opt3,Opt4,CorrectAns from Quetions where Qid=@id", con);
+            cmd.Parameters.AddWithValue("@id", (int)Session["count"]);
+            Session["count"]=(int)Session["count"]+1;
+            SqlDataReader da = cmd.ExecuteReader();
+            while (da.Read())
+            {
+
+                Label2.Text = da.GetValue(0).ToString();
+                RadioButton1.Text = da.GetValue(1).ToString();
+                RadioButton2.Text = da.GetValue(2).ToString();
+                RadioButton3.Text = da.GetValue(3).ToString();
+                RadioButton4.Text = da.GetValue(4).ToString();
+
+            }
+
+            
+        }
+    }
+}
+
+
+ExamResult.aspx
+
+<%@ Page Language="C#" AutoEventWireup="true" CodeBehind="ExamResult.aspx.cs" Inherits="Assignment_Part_2.ExamResult" %>
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head runat="server">
+    <title></title>
+</head>
+<body>
+    <form id="form1" runat="server">
+        <div>
+            <h1><b>User: </b></h1><asp:Label ID="Label1" runat="server" Text="Label"></asp:Label>
+            <h3><b>Result</b></h3>
+            <!--Grid view to Display Result-->
+            <asp:GridView ID="GridView1" runat="server"></asp:GridView>
+        </div>
+    </form>
+</body>
+</html>
+
+examresult.aspx.cs
+
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Data;
+using System.Data.SqlClient;
+using System.Linq;
+using System.Web;
+using System.Web.UI;
+using System.Web.UI.WebControls;
+
+namespace Assignment_Part_2
+{
+    public partial class ExamResult : System.Web.UI.Page
+    {
+        protected void Page_Load(object sender, EventArgs e)
+        {
+            Label1.Text = Request.Cookies["Email"].Value;
+            string user = (Request.Cookies["Email"].Value).ToString();
+            SqlConnection con = new SqlConnection(ConfigurationManager.ConnectionStrings["Assignment2ConnectionString"].ConnectionString);
+            string sqlquery = "select Quetions.Qid,Quetions.Quetion,Quetions.CorrectAns,Answers.email,Answers.YourAnswer from Quetions left join Answers on Quetions.Qid = Answers.Qid where Answers.email = @User";
+            SqlCommand cmd = new SqlCommand(sqlquery, con);
+            cmd.Parameters.AddWithValue("@User", user);
+            con.Open();
+            SqlDataAdapter sda = new SqlDataAdapter(cmd);
+            DataTable dt = new DataTable();
+            sda.Fill(dt);
+            GridView1.DataSource = dt;
+            GridView1.DataBind();
+            con.Close();
+
+
+        }
+    }
+}    
